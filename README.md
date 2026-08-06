@@ -30,15 +30,59 @@ cp .env.example .env
 
 Nao versione `.env` ou qualquer arquivo com credenciais reais.
 
-## Comandos Previstos
+## Docker Compose
 
-Os comandos abaixo serao disponibilizados conforme as proximas tasks forem implementadas.
+Os containers usam imagens com tags fixas e leem configuracoes do `.env` quando o arquivo existir. Para iniciar com os valores padrao, copie o exemplo:
+
+```sh
+cp .env.example .env
+```
+
+Build das imagens:
 
 ```sh
 docker compose build
+```
+
+Subida do banco, API e frontend:
+
+```sh
 docker compose up
+```
+
+Subida em segundo plano:
+
+```sh
+docker compose up -d
+```
+
+Logs:
+
+```sh
+docker compose logs -f
+docker compose logs -f api
+docker compose logs -f web
+docker compose logs -f db
+```
+
+Parada sem apagar dados do banco:
+
+```sh
 docker compose down
 ```
+
+Reset controlado do banco local, apagando o volume nomeado:
+
+```sh
+docker compose down -v
+docker compose up --build
+```
+
+Nesta etapa, `backend` e `frontend` ainda possuem placeholders executaveis para validar a infraestrutura. A API NestJS sera criada na TASK 03 e a aplicacao Angular na TASK 09.
+
+## Comandos Previstos das Aplicacoes
+
+Os comandos abaixo serao completados conforme as proximas tasks forem implementadas.
 
 Backend:
 

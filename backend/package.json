@@ -1,0 +1,14 @@
+{
+  "name": "cadeboard-backend",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "mkdir -p dist && cp src/server.mjs dist/server.mjs",
+    "start:prod": "node dist/server.mjs"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

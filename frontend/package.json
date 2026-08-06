@@ -1,0 +1,13 @@
+{
+  "name": "cadeboard-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "mkdir -p dist/cadeboard/browser && cp src/index.html dist/cadeboard/browser/index.html"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

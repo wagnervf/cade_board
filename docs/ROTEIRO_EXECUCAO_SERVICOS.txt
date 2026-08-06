@@ -1,0 +1,165 @@
+CADEBOARD - Roteiro para executar os servicos
+==============================================
+
+Objetivo
+--------
+
+Este roteiro serve para subir, testar e parar manualmente os servicos locais do
+CADEBOARD. Use estes comandos quando o Codex informar que chegou o momento de
+validar uma task com Docker.
+
+Servicos do Compose
+-------------------
+
+- db: PostgreSQL 18.4, porta local 5432.
+- api: backend, porta local 3000.
+- web: frontend via Nginx, porta local 4200.
+
+As portas sao publicadas apenas em 127.0.0.1.
+
+Antes de subir
+--------------
+
+1. Entre na raiz do projeto:
+
+   cd /home/wagner/Develop/projects/cade_board
+
+2. Se ainda nao existir `.env`, crie a partir do exemplo:
+
+   cp .env.example .env
+
+3. Se outro projeto estiver usando alguma porta, pare esse outro projeto ou edite
+   as portas no `.env` antes de subir o CADEBOARD:
+
+   POSTGRES_PORT=5432
+   API_PORT=3000
+   WEB_PORT=4200
+
+Build das imagens
+-----------------
+
+Execute quando uma task alterar Dockerfile, dependencias, backend ou frontend:
+
+   docker compose build
+
+Subir os servicos
+-----------------
+
+Para subir em segundo plano:
+
+   docker compose up -d
+
+Para subir acompanhando os logs no terminal:
+
+   docker compose up
+
+Verificar se subiu corretamente
+-------------------------------
+
+Veja o estado dos containers:
+
+   docker compose ps
+
+Resultado esperado:
+
+- cadeboard-db: healthy
+- cadeboard-api: healthy
+- cadeboard-web: healthy
+
+Testes rapidos
+--------------
+
+API:
+
+   curl -fsS http://127.0.0.1:3000/api/v1/health
+
+Resultado esperado nesta fase:
+
+   {"status":"ok", ...}
+
+Frontend:
+
+   curl -fsS http://127.0.0.1:4200/health
+
+Resultado esperado:
+
+   ok
+
+Tambem e possivel abrir no navegador:
+
+   http://127.0.0.1:4200
+
+Ver logs
+--------
+
+Todos os servicos:
+
+   docker compose logs -f
+
+Apenas API:
+
+   docker compose logs -f api
+
+Apenas frontend:
+
+   docker compose logs -f web
+
+Apenas banco:
+
+   docker compose logs -f db
+
+Parar os servicos
+-----------------
+
+Pare os servicos quando terminar os testes ou quando precisar liberar as portas:
+
+   docker compose down
+
+Esse comando remove os containers e a rede, mas preserva o volume local do banco.
+
+Reset controlado do banco local
+-------------------------------
+
+Use apenas quando quiser apagar os dados locais do PostgreSQL:
+
+   docker compose down -v
+
+Depois suba novamente:
+
+   docker compose up -d
+
+Atencao: `docker compose down -v` apaga o volume nomeado do banco local.
+
+Problemas comuns
+----------------
+
+Porta ja em uso:
+
+1. Pare o outro projeto que usa a porta.
+2. Ou altere POSTGRES_PORT, API_PORT ou WEB_PORT no `.env`.
+3. Rode novamente `docker compose up -d`.
+
+Servico nao ficou healthy:
+
+1. Rode `docker compose ps`.
+2. Leia os logs do servico com problema, por exemplo:
+
+   docker compose logs db
+   docker compose logs api
+   docker compose logs web
+
+3. Se o banco falhar depois de mudanca de versao ou volume, use o reset
+   controlado somente se puder apagar os dados locais.
+
+Combinado de uso com o Codex
+----------------------------
+
+Ao fim de cada task, o Codex deve informar:
+
+- se e necessario subir os servicos;
+- quais comandos executar;
+- quais URLs ou endpoints testar;
+- quando os servicos podem ser parados.
+
+O controle de executar `docker compose up` e `docker compose down` fica com o
+dono do ambiente.

@@ -11,7 +11,13 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { ActiveItemDto } from './dto/active-item.dto';
 import { CreateItemResponsibilityDto } from './dto/create-item-responsibility.dto';
@@ -90,7 +96,7 @@ export class ItemsController {
 
   @HttpCode(204)
   @ApiOperation({ summary: 'Remove um vinculo entre item e responsavel.' })
-  @ApiOkResponse({ description: 'Vinculo removido.' })
+  @ApiNoContentResponse({ description: 'Vinculo removido.' })
   @Delete(':itemId/responsibilities/:relationshipId')
   deleteResponsibility(
     @Param('itemId', new ParseUUIDPipe()) itemId: string,

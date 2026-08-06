@@ -9,19 +9,34 @@ export class UpdateResponsibleDto {
   @MaxLength(160)
   name?: string;
 
-  @ApiPropertyOptional({ example: '+55 61 3000-1001', maxLength: 40, nullable: true })
+  @ApiPropertyOptional({
+    example: '+55 61 3000-1001',
+    maxLength: 40,
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(40)
   phone?: string | null;
 
-  @ApiPropertyOptional({ example: 'ana.souza@example.internal', maxLength: 254, nullable: true })
+  @ApiPropertyOptional({
+    example: 'ana.souza@example.internal',
+    maxLength: 254,
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @IsEmail()
   @MaxLength(254)
   email?: string | null;
 
-  @ApiPropertyOptional({ example: 'Teams: ana.souza', maxLength: 120, nullable: true })
+  @ApiPropertyOptional({
+    example: 'Teams: ana.souza',
+    maxLength: 120,
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)

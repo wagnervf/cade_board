@@ -4,85 +4,138 @@ CADEBOARD e um sistema interno para apoiar o atendimento N1 na consulta de siste
 
 O MVP segue os requisitos e a fila de implementacao em [docs/CADEBOARD_REQUISITOS_E_TASKS_MVP.md](docs/CADEBOARD_REQUISITOS_E_TASKS_MVP.md).
 
-## Arquitetura Prevista
+## Arquitetura
 
-- `backend/`: API Node.js com NestJS, TypeScript, Prisma e PostgreSQL.
+- `backend/`: API Node.js com NestJS, TypeScript, Prisma, Swagger e PostgreSQL.
 - `frontend/`: aplicacao Angular standalone com TypeScript e SCSS.
-- `docs/`: requisitos, decisoes e plano de implementacao.
-- `docker-compose.yml`: orquestracao local prevista para banco, API e web.
+- `docs/`: requisitos, decisoes e roteiros de operacao.
+- `docker-compose.yml`: orquestracao local de `db`, `api`, `api-tools` e `web`.
 
 ## Pre-requisitos
 
-- Node.js 24 LTS.
-- npm compativel com a versao do Node.js instalada.
 - Docker e Docker Compose.
 - Git.
 
-As versoes serao fixadas nos arquivos de cada camada quando backend, frontend e containers forem criados.
+Node.js 24 LTS e npm sao necessarios apenas para execucao local fora do Docker.
+Com Docker, as imagens fixadas no projeto ja fornecem o runtime necessario.
 
-## Configuracao
+## Execucao Rapida Com Docker
 
-Copie `.env.example` para `.env` para execucao local quando os servicos forem implementados:
-
-```sh
-cp .env.example .env
-```
-
-Nao versione `.env` ou qualquer arquivo com credenciais reais.
-
-## Docker Compose
-
-Os containers usam imagens com tags fixas e leem configuracoes do `.env` quando o arquivo existir. Para iniciar com os valores padrao, copie o exemplo:
+1. Copie o arquivo de ambiente:
 
 ```sh
 cp .env.example .env
 ```
 
-Build das imagens:
+2. Construa as imagens:
 
 ```sh
 docker compose build
 ```
 
-Subida do banco, API e frontend:
+3. Suba o banco:
 
 ```sh
-docker compose up
+docker compose up -d db
 ```
 
-Subida em segundo plano:
+4. Aplique migrations e seed:
 
 ```sh
-docker compose up -d
+docker compose run --rm api-tools npm run prisma:migrate
+docker compose run --rm api-tools npm run prisma:seed
 ```
 
-Logs:
+5. Suba API e frontend:
 
 ```sh
-docker compose logs -f
-docker compose logs -f api
-docker compose logs -f web
-docker compose logs -f db
+docker compose up -d api web
 ```
 
-Parada sem apagar dados do banco:
+6. Acesse:
+
+- Frontend: `http://127.0.0.1:4200`
+- API health: `http://127.0.0.1:3000/api/v1/health`
+- Swagger: `http://127.0.0.1:3000/api/docs`
+
+7. Pare os servicos quando terminar:
 
 ```sh
 docker compose down
 ```
 
-Reset controlado do banco local, apagando o volume nomeado:
+Esse comando preserva o volume do PostgreSQL. Use `docker compose down -v`
+somente quando quiser apagar os dados locais.
+
+## Variaveis
+
+As variaveis ficam em `.env`, criado a partir de `.env.example`.
+
+| Variavel | Padrao | Uso |
+| --- | --- | --- |
+| `NODE_ENV` | `development` | ambiente da API |
+| `API_PORT` | `3000` | porta local da API |
+| `API_CORS_ORIGIN` | `http://localhost:4200` | origem permitida para CORS |
+| `POSTGRES_PORT` | `5432` | porta local do PostgreSQL |
+| `POSTGRES_DB` | `cadeboard` | banco criado no container |
+| `POSTGRES_USER` | `cadeboard` | usuario do banco |
+| `POSTGRES_PASSWORD` | `cadeboard_dev_password` | senha local do banco |
+| `DATABASE_URL` | `postgresql://cadeboard:cadeboard_dev_password@db:5432/cadeboard?schema=public` | conexao Prisma usada pela API e `api-tools` |
+| `WEB_PORT` | `4200` | porta local do frontend |
+| `API_BASE_URL` | `/api/v1` | base usada no build do Angular |
+| `API_PROXY_PASS` | `http://api:3000` | destino do proxy Nginx do frontend |
+
+Nao versione `.env` ou qualquer arquivo com credenciais reais.
+
+## Migrations E Seed
+
+Aplicar migrations versionadas:
 
 ```sh
-docker compose down -v
-docker compose up --build
+docker compose up -d db
+docker compose run --rm api-tools npm run prisma:migrate
 ```
 
-Nesta etapa, `backend` e `frontend` ainda possuem placeholders executaveis para validar a infraestrutura. A API NestJS sera criada na TASK 03 e a aplicacao Angular na TASK 09.
+Popular dados iniciais:
 
-## Comandos Previstos das Aplicacoes
+```sh
+docker compose run --rm api-tools npm run prisma:seed
+```
 
-Os comandos abaixo serao completados conforme as proximas tasks forem implementadas.
+O alvo `api-tools` gera o Prisma Client durante o build, e o script
+`prisma:seed` tambem executa `prisma generate` antes de rodar o seed. O seed e
+idempotente e pode ser executado mais de uma vez sem duplicar os dados iniciais.
+Use `prisma:migrate` para aplicar migrations versionadas; nao use sincronizacao
+automatica destrutiva de schema em ambientes persistentes.
+
+## Testes E Checks
+
+Backend pelo `api-tools`:
+
+```sh
+docker compose run --rm api-tools npm run lint
+docker compose run --rm api-tools npm test
+docker compose run --rm api-tools npm run build
+docker compose run --rm api-tools npm run test:integration
+docker compose run --rm api-tools npm audit --audit-level=high
+```
+
+Frontend em container Node:
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" -e NPM_CONFIG_CACHE=/tmp/.npm -v "$PWD/frontend:/app" -w /app node:24.15.0-alpine3.23 npm run lint
+docker run --rm --user "$(id -u):$(id -g)" -e NPM_CONFIG_CACHE=/tmp/.npm -v "$PWD/frontend:/app" -w /app node:24.15.0-alpine3.23 npm test
+docker run --rm --user "$(id -u):$(id -g)" -e NPM_CONFIG_CACHE=/tmp/.npm -v "$PWD/frontend:/app" -w /app node:24.15.0-alpine3.23 npm run build
+docker run --rm --user "$(id -u):$(id -g)" -e NPM_CONFIG_CACHE=/tmp/.npm -v "$PWD/frontend:/app" -w /app node:24.15.0-alpine3.23 npm audit --audit-level=high
+```
+
+Build final das imagens:
+
+```sh
+docker compose build api api-tools web
+```
+
+## Execucao Local Sem Docker
 
 Backend:
 
@@ -94,22 +147,6 @@ npm test
 npm run build
 ```
 
-Banco, migrations e seed pelo Compose:
-
-```sh
-docker compose up -d db
-docker compose run --rm api-tools npm run prisma:migrate
-docker compose run --rm api-tools npm run prisma:seed
-docker compose run --rm api-tools npm run test:integration
-docker compose down
-```
-
-O alvo `api-tools` gera o Prisma Client durante o build, e o script
-`prisma:seed` tambem executa `prisma generate` antes de rodar o seed. O seed e
-idempotente e pode ser executado mais de uma vez sem duplicar os dados iniciais.
-Use `prisma:migrate` para aplicar migrations versionadas; nao use sincronizacao
-automatica destrutiva de schema em ambientes persistentes.
-
 Frontend:
 
 ```sh
@@ -119,6 +156,31 @@ npm run lint
 npm test
 npm run build
 ```
+
+## Solucao De Problemas
+
+- Porta em uso: altere `POSTGRES_PORT`, `API_PORT` ou `WEB_PORT` no `.env`, ou pare o projeto que esta usando a mesma porta.
+- API ou web nao ficam `healthy`: rode `docker compose ps` e leia logs com `docker compose logs api`, `docker compose logs web` ou `docker compose logs db`.
+- Erro de Prisma Client ausente: reconstrua `api` e `api-tools` com `docker compose build api api-tools`.
+- Banco sem tabelas: rode `docker compose up -d db` e `docker compose run --rm api-tools npm run prisma:migrate`.
+- Dados iniciais ausentes: rode `docker compose run --rm api-tools npm run prisma:seed`.
+- Reset local do banco: use `docker compose down -v` apenas se puder apagar os dados locais.
+
+## Limitacoes Do MVP
+
+- Nao ha autenticacao, perfis, auditoria ou historico completo de status.
+- Qualquer pessoa com acesso interno ao sistema pode alterar cadastros e status.
+- Nao ha notificacoes automaticas, integracao com monitoramento ou chamados.
+- O status e unico por item; nao ha separacao por ambiente.
+- A busca principal nao pesquisa por responsaveis ou contatos.
+
+## Proximos Passos
+
+- Autenticacao corporativa e perfis de acesso.
+- Auditoria completa de alteracoes e identificacao do autor.
+- Integracao com monitoramento/chamados e notificacoes de previsao vencida.
+- Busca por responsavel, equipe e contato se houver demanda.
+- Testes end-to-end de navegador para os fluxos mais usados.
 
 ## Status do Projeto
 
@@ -135,4 +197,5 @@ npm run build
 - TASK 11: tela de gestao de itens no frontend com listagem administrativa, filtros, cadastro, edicao, ativacao/inativacao, selecao pesquisavel de responsaveis existentes e manutencao de vinculos tecnicos e gerenciais sem criar novos cadastros.
 - TASK 12: painel operacional com busca por sigla/nome/descricao com debounce e cancelamento de requisicoes anteriores, filtros preservados na URL, cards responsivos por criticidade, contatos agrupados por papel com acao de copiar, status com texto/cor/indicador visual, previsao vencida, paginacao e estados de carregamento/vazio/erro.
 - TASK 13: alteracao rapida de status no painel com formulario compacto por card, opcoes `OK`, `Instavel` e `Parado`, motivo/previsao opcionais, confirmacao de alteracao, alerta adicional ao limpar previsao retornando para `OK`, bloqueio por card durante salvamento, mensagem de sucesso/erro e atualizacao local com a resposta da API.
-- Proximas etapas: testes integrados, documentacao e encerramento do MVP.
+- TASK 14: validacao final do MVP com teste de integracao do fluxo responsavel-item-vinculo-busca-status, checks de backend/frontend, validacao de migrations, seed, subida Docker Compose, health, proxy web/API e Swagger, alem de README completo com execucao, variaveis, testes, troubleshooting, limitacoes e proximos passos.
+- Status: MVP concluido conforme escopo definido.

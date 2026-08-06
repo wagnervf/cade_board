@@ -7,12 +7,20 @@ export class UpdateItemStatusDto {
   @IsEnum(OperationalStatus)
   status!: OperationalStatus;
 
-  @ApiPropertyOptional({ example: 'Indisponibilidade em analise.', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Indisponibilidade em analise.',
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @IsString()
   statusNote?: string | null;
 
-  @ApiPropertyOptional({ example: '2026-08-06T21:00:00.000Z', nullable: true })
+  @ApiPropertyOptional({
+    example: '2026-08-06T21:00:00.000Z',
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @IsISO8601()
   expectedReturnAt?: string | null;

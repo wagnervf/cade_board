@@ -3,6 +3,146 @@
   <h1>Responsaveis</h1>
 </section>
 
-<section class="surface">
-  <p>Contatos reutilizaveis para associacao tecnica e gerencial.</p>
+@if (feedbackMessage(); as message) {
+  <section class="feedback" role="status">
+    {{ message }}
+  </section>
+}
+
+@if (errorMessage(); as message) {
+  <section class="feedback error" role="alert">
+    {{ message }}
+  </section>
+}
+
+<section class="management-grid">
+  <form class="surface form-panel" [formGroup]="form" (ngSubmit)="submitForm()">
+    <div class="section-title">
+      <h2>{{ editingResponsible() ? 'Editar responsavel' : 'Novo responsavel' }}</h2>
+      @if (editingResponsible()) {
+        <button type="button" class="ghost-button" (click)="cancelEdit()">Cancelar</button>
+      }
+    </div>
+
+    <label>
+      Nome
+      <input type="text" formControlName="name" autocomplete="name">
+      @if (isInvalid('name')) {
+        <span class="field-error">Informe o nome com ate 160 caracteres.</span>
+      }
+    </label>
+
+    <label>
+      Telefone
+      <input type="tel" formControlName="phone" autocomplete="tel">
+      @if (isInvalid('phone')) {
+        <span class="field-error">Use ate 40 caracteres.</span>
+      }
+    </label>
+
+    <label>
+      E-mail
+      <input type="email" formControlName="email" autocomplete="email">
+      @if (isInvalid('email')) {
+        <span class="field-error">Informe um e-mail valido.</span>
+      }
+    </label>
+
+    <label>
+      Canal de contato
+      <input type="text" formControlName="contactChannel">
+      @if (isInvalid('contactChannel')) {
+        <span class="field-error">Use ate 120 caracteres.</span>
+      }
+    </label>
+
+    @if (hasContactError()) {
+      <p class="field-error form-error">
+        Informe telefone, e-mail ou canal de contato.
+      </p>
+    }
+
+    <button type="submit" class="primary-button" [disabled]="form.invalid || isSaving()">
+      {{ isSaving() ? 'Salvando...' : editingResponsible() ? 'Salvar alteracoes' : 'Cadastrar' }}
+    </button>
+  </form>
+
+  <section class="surface list-panel">
+    <div class="toolbar">
+      <label class="search-field">
+        Buscar
+        <input
+          type="search"
+          [value]="search()"
+          (input)="search.set($any($event.target).value)"
+          (keyup.enter)="searchResponsibles()"
+        >
+      </label>
+
+      <div class="toolbar-actions">
+        <button type="button" class="secondary-button" (click)="searchResponsibles()">
+          Buscar
+        </button>
+        <button type="button" class="ghost-button" (click)="clearSearch()">
+          Limpar
+        </button>
+      </div>
+    </div>
+
+    @if (isLoading()) {
+      <div class="state">Carregando...</div>
+    } @else if (response()?.data?.length === 0) {
+      <div class="state">Nenhum responsavel encontrado.</div>
+    } @else {
+      <div class="responsible-list">
+        @for (responsible of response()?.data; track responsible.id) {
+          <article class="responsible-row" [class.inactive]="!responsible.active">
+            <div>
+              <div class="row-heading">
+                <h3>{{ responsible.name }}</h3>
+                <span class="status-chip">{{ responsible.active ? 'Ativo' : 'Inativo' }}</span>
+              </div>
+              <dl>
+                <div>
+                  <dt>Telefone</dt>
+                  <dd>{{ responsible.phone || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>E-mail</dt>
+                  <dd>{{ responsible.email || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>Canal</dt>
+                  <dd>{{ responsible.contactChannel || '-' }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="row-actions">
+              <button type="button" class="secondary-button" [disabled]="isSaving()" (click)="editResponsible(responsible)">
+                Editar
+              </button>
+              <button type="button" class="ghost-button danger" [disabled]="isSaving()" (click)="toggleActive(responsible)">
+                {{ responsible.active ? 'Inativar' : 'Ativar' }}
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+
+    <footer class="pagination">
+      <span>
+        Pagina {{ currentPage() }} de {{ totalPages() || 1 }} · {{ response()?.totalItems ?? 0 }} registros
+      </span>
+      <div>
+        <button type="button" class="ghost-button" [disabled]="!canGoBack()" (click)="previousPage()">
+          Anterior
+        </button>
+        <button type="button" class="ghost-button" [disabled]="!canGoForward()" (click)="nextPage()">
+          Proxima
+        </button>
+      </div>
+    </footer>
+  </section>
 </section>

@@ -22,7 +22,12 @@ const prisma = new PrismaClient({
   ),
 });
 
+const prefix = `IT_SCHEMA_${Date.now()}_`;
+const createdItemAcronyms: string[] = [];
+const createdResponsibleNames: string[] = [];
+
 async function createItem(acronym: string): Promise<string> {
+  createdItemAcronyms.push(acronym);
   const item = await prisma.catalogItem.create({
     data: {
       acronym,
@@ -38,6 +43,7 @@ async function createItem(acronym: string): Promise<string> {
 }
 
 async function createResponsible(name: string): Promise<string> {
+  createdResponsibleNames.push(name);
   const responsible = await prisma.responsible.create({
     data: {
       email: `${name.toLowerCase().replace(/\s+/g, '.')}@example.internal`,
@@ -50,9 +56,22 @@ async function createResponsible(name: string): Promise<string> {
 }
 
 async function cleanDatabase(): Promise<void> {
-  await prisma.itemResponsibility.deleteMany();
-  await prisma.catalogItem.deleteMany();
-  await prisma.responsible.deleteMany();
+  await prisma.itemResponsibility.deleteMany({
+    where: {
+      OR: [
+        { item: { acronym: { in: createdItemAcronyms } } },
+        { responsible: { name: { in: createdResponsibleNames } } },
+      ],
+    },
+  });
+  await prisma.catalogItem.deleteMany({
+    where: { acronym: { in: createdItemAcronyms } },
+  });
+  await prisma.responsible.deleteMany({
+    where: { name: { in: createdResponsibleNames } },
+  });
+  createdItemAcronyms.length = 0;
+  createdResponsibleNames.length = 0;
 }
 
 describe('Prisma schema constraints', () => {
@@ -70,9 +89,9 @@ describe('Prisma schema constraints', () => {
   });
 
   it('rejects catalog item acronyms that differ only by case', async () => {
-    await createItem('CGTI');
+    await createItem(`${prefix}CGTI`);
 
-    await expect(createItem('cgti')).rejects.toBeInstanceOf(
+    await expect(createItem(`${prefix.toLowerCase()}cgti`)).rejects.toBeInstanceOf(
       Prisma.PrismaClientKnownRequestError,
     );
   });
@@ -88,8 +107,8 @@ describe('Prisma schema constraints', () => {
   });
 
   it('rejects duplicated item, responsible and role relationships', async () => {
-    const itemId = await createItem('SIA');
-    const responsibleId = await createResponsible('Tecnico SIA');
+    const itemId = await createItem(`${prefix}SIA`);
+    const responsibleId = await createResponsible(`${prefix}Tecnico SIA`);
 
     await prisma.itemResponsibility.create({
       data: {

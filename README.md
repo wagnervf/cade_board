@@ -126,4 +126,5 @@ npm run build
 - TASK 02: Docker Compose com PostgreSQL, API e web.
 - TASK 03: base NestJS do backend com validacao de ambiente, prefixo `/api/v1`, CORS, filtro global de erros, Swagger em `/api/docs`, endpoint `/api/v1/health`, lint, testes e build.
 - TASK 04: Prisma com schema PostgreSQL, migration inicial versionada, seed idempotente e testes de integracao das restricoes principais.
-- Proximas etapas: responsaveis, catalogo e frontend.
+- TASK 05: endpoints de responsaveis no backend com listagem paginada, busca por nome, detalhe, criacao, atualizacao, ativacao/inativacao, validacoes de contato, testes unitarios e testes de integracao dos endpoints.
+- Proximas etapas: catalogo, vinculos de responsabilidade, status e frontend.

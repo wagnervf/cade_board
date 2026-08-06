@@ -7,11 +7,12 @@ RUN npm ci
 
 FROM deps AS tools
 COPY . .
+ARG DATABASE_URL=postgresql://cadeboard:cadeboard_dev_password@db:5432/cadeboard?schema=public
+ENV DATABASE_URL=$DATABASE_URL
+RUN npm run prisma:generate
 CMD ["npm", "run", "prisma:generate"]
 
 FROM tools AS build
-ARG DATABASE_URL=postgresql://cadeboard:cadeboard_dev_password@db:5432/cadeboard?schema=public
-ENV DATABASE_URL=$DATABASE_URL
 RUN npm run prisma:generate && npm run build
 
 FROM node:24.15.0-alpine3.23 AS prod-deps

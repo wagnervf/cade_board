@@ -104,9 +104,11 @@ docker compose run --rm api-tools npm run test:integration
 docker compose down
 ```
 
-O seed e idempotente e pode ser executado mais de uma vez sem duplicar os dados
-iniciais. Use `prisma:migrate` para aplicar migrations versionadas; nao use
-sincronizacao automatica destrutiva de schema em ambientes persistentes.
+O alvo `api-tools` gera o Prisma Client durante o build, e o script
+`prisma:seed` tambem executa `prisma generate` antes de rodar o seed. O seed e
+idempotente e pode ser executado mais de uma vez sem duplicar os dados iniciais.
+Use `prisma:migrate` para aplicar migrations versionadas; nao use sincronizacao
+automatica destrutiva de schema em ambientes persistentes.
 
 Frontend:
 

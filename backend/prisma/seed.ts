@@ -13,12 +13,11 @@ if (!connectionString) {
   throw new Error('DATABASE_URL is required to run the seed');
 }
 
+const pool = new Pool({
+  connectionString,
+});
 const prisma = new PrismaClient({
-  adapter: new PrismaPg(
-    new Pool({
-      connectionString,
-    }),
-  ),
+  adapter: new PrismaPg(pool),
 });
 
 type SeedResponsible = {
@@ -204,6 +203,7 @@ async function main(): Promise<void> {
 main()
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   })
   .catch((error: unknown) => {
     console.error(error);

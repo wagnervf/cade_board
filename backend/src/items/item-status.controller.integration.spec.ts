@@ -11,6 +11,7 @@ describe('Item status integration', () => {
   const prefix = `IT_STATUS_${Date.now()}_`;
   let app: INestApplication;
   let prisma: PrismaService;
+  let fixtureIndex = 0;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -30,11 +31,13 @@ describe('Item status integration', () => {
   });
 
   async function createItem(): Promise<string> {
+    fixtureIndex += 1;
+    const fixturePrefix = `${prefix}${fixtureIndex}_`;
     const item = await prisma.catalogItem.create({
       data: {
-        acronym: `${prefix}APP`,
+        acronym: `${fixturePrefix}APP`,
         description: 'Aplicacao para status',
-        name: `${prefix}Aplicacao`,
+        name: `${fixturePrefix}Aplicacao`,
         type: CatalogItemType.SISTEMA,
       },
       select: { id: true },

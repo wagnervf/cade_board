@@ -11,6 +11,7 @@ describe('Item responsibilities integration', () => {
   const prefix = `IT_REL_${Date.now()}_`;
   let app: INestApplication;
   let prisma: PrismaService;
+  let fixtureIndex = 0;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -39,19 +40,21 @@ describe('Item responsibilities integration', () => {
   });
 
   async function createFixture(): Promise<{ itemId: string; responsibleId: string }> {
+    fixtureIndex += 1;
+    const fixturePrefix = `${prefix}${fixtureIndex}_`;
     const item = await prisma.catalogItem.create({
       data: {
-        acronym: `${prefix}SIA`,
+        acronym: `${fixturePrefix}SIA`,
         description: 'Sistema de integracao',
-        name: `${prefix}Sistema Integrado`,
+        name: `${fixturePrefix}Sistema Integrado`,
         type: CatalogItemType.SISTEMA,
       },
       select: { id: true },
     });
     const responsible = await prisma.responsible.create({
       data: {
-        email: `${prefix.toLowerCase()}tecnico@example.internal`,
-        name: `${prefix}Tecnico`,
+        email: `${fixturePrefix.toLowerCase()}tecnico@example.internal`,
+        name: `${fixturePrefix}Tecnico`,
       },
       select: { id: true },
     });

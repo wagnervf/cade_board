@@ -14,12 +14,11 @@ if (!connectionString) {
   throw new Error('DATABASE_URL is required to run integration tests');
 }
 
+const pool = new Pool({
+  connectionString,
+});
 const prisma = new PrismaClient({
-  adapter: new PrismaPg(
-    new Pool({
-      connectionString,
-    }),
-  ),
+  adapter: new PrismaPg(pool),
 });
 
 const prefix = `IT_SCHEMA_${Date.now()}_`;
@@ -86,6 +85,7 @@ describe('Prisma schema constraints', () => {
   afterAll(async () => {
     await cleanDatabase();
     await prisma.$disconnect();
+    await pool.end();
   });
 
   it('rejects catalog item acronyms that differ only by case', async () => {

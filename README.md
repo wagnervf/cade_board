@@ -127,4 +127,5 @@ npm run build
 - TASK 03: base NestJS do backend com validacao de ambiente, prefixo `/api/v1`, CORS, filtro global de erros, Swagger em `/api/docs`, endpoint `/api/v1/health`, lint, testes e build.
 - TASK 04: Prisma com schema PostgreSQL, migration inicial versionada, seed idempotente e testes de integracao das restricoes principais.
 - TASK 05: endpoints de responsaveis no backend com listagem paginada, busca por nome, detalhe, criacao, atualizacao, ativacao/inativacao, validacoes de contato, testes unitarios e testes de integracao dos endpoints.
-- Proximas etapas: catalogo, vinculos de responsabilidade, status e frontend.
+- TASK 06: endpoints de catalogo no backend com CRUD sem exclusao fisica, busca por sigla/nome/descricao, filtros por tipo/status, ordenacao por criticidade, paginacao e responsaveis agrupados no retorno.
+- Proximas etapas: vinculos de responsabilidade, status e frontend.

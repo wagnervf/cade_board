@@ -10,13 +10,16 @@ export default tseslint.config(
       globals: {
         afterAll: 'readonly',
         beforeAll: 'readonly',
+        console: 'readonly',
         describe: 'readonly',
         expect: 'readonly',
         it: 'readonly',
         process: 'readonly',
       },
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ['prisma.config.ts', 'prisma/seed.ts'],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -34,6 +37,12 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/**', 'coverage/**', 'node_modules/**', 'jest.config.cjs'],
+    ignores: [
+      'dist/**',
+      'coverage/**',
+      'node_modules/**',
+      'jest.config.cjs',
+      'jest.integration.config.cjs',
+    ],
   },
 );

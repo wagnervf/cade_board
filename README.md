@@ -94,6 +94,20 @@ npm test
 npm run build
 ```
 
+Banco, migrations e seed pelo Compose:
+
+```sh
+docker compose up -d db
+docker compose run --rm api-tools npm run prisma:migrate
+docker compose run --rm api-tools npm run prisma:seed
+docker compose run --rm api-tools npm run test:integration
+docker compose down
+```
+
+O seed e idempotente e pode ser executado mais de uma vez sem duplicar os dados
+iniciais. Use `prisma:migrate` para aplicar migrations versionadas; nao use
+sincronizacao automatica destrutiva de schema em ambientes persistentes.
+
 Frontend:
 
 ```sh
@@ -109,4 +123,5 @@ npm run build
 - TASK 01: estrutura inicial do repositorio.
 - TASK 02: Docker Compose com PostgreSQL, API e web.
 - TASK 03: base NestJS do backend com validacao de ambiente, prefixo `/api/v1`, CORS, filtro global de erros, Swagger em `/api/docs`, endpoint `/api/v1/health`, lint, testes e build.
-- Proximas etapas: modelo de dados, responsaveis, catalogo e frontend.
+- TASK 04: Prisma com schema PostgreSQL, migration inicial versionada, seed idempotente e testes de integracao das restricoes principais.
+- Proximas etapas: responsaveis, catalogo e frontend.

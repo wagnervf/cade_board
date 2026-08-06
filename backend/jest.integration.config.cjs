@@ -3,10 +3,9 @@ module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
   testEnvironment: 'node',
-  testRegex: '^(?!.*\\.integration\\.spec\\.ts$).*\\.spec\\.ts$',
+  testRegex: '.*\\.integration\\.spec\\.ts$',
   setupFiles: ['<rootDir>/src/test/setup-env.ts'],
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
-  collectCoverageFrom: ['src/**/*.ts'],
 };

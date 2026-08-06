@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CatalogItemType {
+  SISTEMA
+  PROJETO
+  SERVICO_INFRAESTRUTURA
+}
+
+enum OperationalStatus {
+  OK
+  INSTAVEL
+  PARADO
+}
+
+enum ResponsibilityRole {
+  TECNICO
+  GERENCIAL
+}
+
+model CatalogItem {
+  id               String               @id @default(uuid()) @db.Uuid
+  type             CatalogItemType
+  acronym          String               @db.VarChar(30)
+  name             String               @db.VarChar(160)
+  description      String               @db.Text
+  status           OperationalStatus    @default(OK)
+  statusNote       String?              @map("status_note") @db.Text
+  expectedReturnAt DateTime?            @map("expected_return_at") @db.Timestamptz(6)
+  statusUpdatedAt  DateTime             @default(now()) @map("status_updated_at") @db.Timestamptz(6)
+  active           Boolean              @default(true)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  responsibilities ItemResponsibility[]
+
+  @@index([active])
+  @@index([status])
+  @@index([type])
+  @@map("catalog_items")
+}
+
+model Responsible {
+  id             String               @id @default(uuid()) @db.Uuid
+  name           String               @db.VarChar(160)
+  phone          String?              @db.VarChar(40)
+  email          String?              @db.VarChar(254)
+  contactChannel String?              @map("contact_channel") @db.VarChar(120)
+  active         Boolean              @default(true)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  responsibilities ItemResponsibility[]
+
+  @@index([active])
+  @@index([name])
+  @@map("responsibles")
+}
+
+model ItemResponsibility {
+  id            String             @id @default(uuid()) @db.Uuid
+  itemId        String             @map("item_id") @db.Uuid
+  responsibleId String             @map("responsible_id") @db.Uuid
+  role          ResponsibilityRole
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  item          CatalogItem        @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  responsible   Responsible        @relation(fields: [responsibleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([itemId, responsibleId, role])
+  @@index([itemId])
+  @@index([responsibleId])
+  @@map("item_responsibilities")
+}

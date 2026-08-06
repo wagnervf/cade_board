@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CatalogItem,
   ItemResponsibility,
@@ -8,6 +13,7 @@ import {
 } from '@prisma/client';
 
 import { CreateItemDto } from './dto/create-item.dto';
+import { CreateItemResponsibilityDto } from './dto/create-item-responsibility.dto';
 import { ListItemsQueryDto } from './dto/list-items-query.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import {
@@ -196,6 +202,63 @@ export class ItemsService {
     });
 
     return toResponse(item as ItemWithResponsibilities);
+  }
+
+  async createResponsibility(
+    itemId: string,
+    dto: CreateItemResponsibilityDto,
+  ): Promise<ItemResponse> {
+    const [item, responsible] = await Promise.all([
+      this.findExisting(itemId),
+      this.prisma.responsible.findUnique({ where: { id: dto.responsibleId } }),
+    ]);
+
+    if (!item.active) {
+      throw new BadRequestException('Nao e possivel vincular responsavel a item inativo.');
+    }
+
+    if (!responsible) {
+      throw new NotFoundException('Responsavel nao encontrado.');
+    }
+
+    if (!responsible.active) {
+      throw new BadRequestException('Nao e possivel vincular responsavel inativo.');
+    }
+
+    try {
+      await this.prisma.itemResponsibility.create({
+        data: {
+          itemId,
+          responsibleId: dto.responsibleId,
+          role: dto.role,
+        },
+      });
+    } catch (error) {
+      if (isUniqueError(error)) {
+        throw new ConflictException('Este responsavel ja possui este papel no item.');
+      }
+      throw error;
+    }
+
+    return this.detail(itemId);
+  }
+
+  async deleteResponsibility(itemId: string, relationshipId: string): Promise<void> {
+    await this.findExisting(itemId);
+    const relationship = await this.prisma.itemResponsibility.findFirst({
+      where: {
+        id: relationshipId,
+        itemId,
+      },
+    });
+
+    if (!relationship) {
+      throw new NotFoundException('Vinculo de responsabilidade nao encontrado.');
+    }
+
+    await this.prisma.itemResponsibility.delete({
+      where: { id: relationshipId },
+    });
   }
 
   private buildListWhere(query: ListItemsQueryDto): Prisma.CatalogItemWhereInput {

@@ -1,5 +1,5 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
-import { CatalogItemType, OperationalStatus } from '@prisma/client';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { CatalogItemType, OperationalStatus, ResponsibilityRole } from '@prisma/client';
 
 import { ItemsService } from './items.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,6 +33,14 @@ describe('ItemsService', () => {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+    },
+    itemResponsibility: {
+      create: jest.fn(),
+      delete: jest.fn(),
+      findFirst: jest.fn(),
+    },
+    responsible: {
+      findUnique: jest.fn(),
     },
   } as unknown as jest.Mocked<PrismaService>;
 
@@ -105,6 +113,49 @@ describe('ItemsService', () => {
         description: 'Descricao',
         name: 'Central',
         type: CatalogItemType.SISTEMA,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('rejects relationship creation for inactive item', async () => {
+    prisma.catalogItem.findUnique.mockResolvedValue(makeItem({ active: false }));
+    prisma.responsible.findUnique.mockResolvedValue({
+      active: true,
+      contactChannel: null,
+      createdAt: new Date(),
+      email: 'ana@example.internal',
+      id: 'responsible-id',
+      name: 'Ana',
+      phone: null,
+      updatedAt: new Date(),
+    });
+
+    await expect(
+      service.createResponsibility('item-id', {
+        responsibleId: 'responsible-id',
+        role: ResponsibilityRole.TECNICO,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('maps duplicated relationship to conflict', async () => {
+    prisma.catalogItem.findUnique.mockResolvedValue(makeItem());
+    prisma.responsible.findUnique.mockResolvedValue({
+      active: true,
+      contactChannel: null,
+      createdAt: new Date(),
+      email: 'ana@example.internal',
+      id: 'responsible-id',
+      name: 'Ana',
+      phone: null,
+      updatedAt: new Date(),
+    });
+    prisma.itemResponsibility.create.mockRejectedValue({ code: 'P2002' });
+
+    await expect(
+      service.createResponsibility('item-id', {
+        responsibleId: 'responsible-id',
+        role: ResponsibilityRole.TECNICO,
       }),
     ).rejects.toBeInstanceOf(ConflictException);
   });

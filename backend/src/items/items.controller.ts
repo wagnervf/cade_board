@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -12,6 +14,7 @@ import {
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ActiveItemDto } from './dto/active-item.dto';
+import { CreateItemResponsibilityDto } from './dto/create-item-responsibility.dto';
 import { CreateItemDto } from './dto/create-item.dto';
 import { ListItemsQueryDto } from './dto/list-items-query.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
@@ -62,5 +65,26 @@ export class ItemsController {
     @Body() dto: ActiveItemDto,
   ): Promise<ItemResponse> {
     return this.itemsService.setActive(id, dto.active);
+  }
+
+  @Post(':itemId/responsibilities')
+  @ApiOperation({ summary: 'Associa um responsavel e papel a um item.' })
+  @ApiCreatedResponse({ description: 'Vinculo criado e item atualizado retornado.' })
+  createResponsibility(
+    @Param('itemId', new ParseUUIDPipe()) itemId: string,
+    @Body() dto: CreateItemResponsibilityDto,
+  ): Promise<ItemResponse> {
+    return this.itemsService.createResponsibility(itemId, dto);
+  }
+
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Remove um vinculo entre item e responsavel.' })
+  @ApiOkResponse({ description: 'Vinculo removido.' })
+  @Delete(':itemId/responsibilities/:relationshipId')
+  deleteResponsibility(
+    @Param('itemId', new ParseUUIDPipe()) itemId: string,
+    @Param('relationshipId', new ParseUUIDPipe()) relationshipId: string,
+  ): Promise<void> {
+    return this.itemsService.deleteResponsibility(itemId, relationshipId);
   }
 }

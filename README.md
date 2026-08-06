@@ -133,4 +133,5 @@ npm run build
 - TASK 09: base Angular standalone do frontend com routing, SCSS, ambientes, URL da API, layout responsivo, tokens CSS, interceptor HTTP com feedback global, scripts de lint/test/build e rotas lazy `/painel`, `/itens` e `/responsaveis`.
 - TASK 10: tela de gestao de responsaveis no frontend com busca, paginacao, cadastro, edicao, ativacao/inativacao com confirmacao, validacoes equivalentes ao backend e estados de carregamento/vazio/erro/sucesso.
 - TASK 11: tela de gestao de itens no frontend com listagem administrativa, filtros, cadastro, edicao, ativacao/inativacao, selecao pesquisavel de responsaveis existentes e manutencao de vinculos tecnicos e gerenciais sem criar novos cadastros.
-- Proximas etapas: painel operacional e busca principal.
+- TASK 12: painel operacional com busca por sigla/nome/descricao com debounce e cancelamento de requisicoes anteriores, filtros preservados na URL, cards responsivos por criticidade, contatos agrupados por papel com acao de copiar, status com texto/cor/indicador visual, previsao vencida, paginacao e estados de carregamento/vazio/erro.
+- Proximas etapas: alteracao rapida de status no painel e validacao final do MVP.

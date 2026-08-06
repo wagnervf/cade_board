@@ -1,8 +1,204 @@
 <section class="page-heading">
   <p class="eyebrow">Operacao</p>
-  <h1>Painel</h1>
+  <h1>Painel operacional</h1>
 </section>
 
-<section class="surface">
-  <p>Busca e acompanhamento do estado operacional dos itens.</p>
+<section class="surface search-panel">
+  <label class="main-search">
+    Buscar por sigla, nome ou descricao
+    <input
+      type="search"
+      [value]="search()"
+      (input)="updateSearch($any($event.target).value)"
+      autocomplete="off"
+    >
+  </label>
+
+  <div class="filters">
+    <label>
+      Tipo
+      <select [value]="typeFilter()" (change)="updateTypeFilter($any($event.target).value)">
+        <option value="">Todos</option>
+        @for (type of itemTypes; track type.value) {
+          <option [value]="type.value">{{ type.label }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      Status
+      <select [value]="statusFilter()" (change)="updateStatusFilter($any($event.target).value)">
+        <option value="">Todos</option>
+        @for (status of statuses; track status.value) {
+          <option [value]="status.value">{{ status.label }}</option>
+        }
+      </select>
+    </label>
+
+    <button type="button" class="ghost-button" (click)="clearFilters()">
+      Limpar
+    </button>
+  </div>
 </section>
+
+@if (copiedMessage(); as message) {
+  <section class="feedback" role="status">{{ message }}</section>
+}
+
+@if (errorMessage(); as message) {
+  <section class="feedback error" role="alert">{{ message }}</section>
+}
+
+@if (isLoading()) {
+  <section class="state subtle" role="status">
+    Atualizando painel...
+  </section>
+}
+
+@if (!isLoading() && response()?.data?.length === 0) {
+  <section class="state">
+    Nenhum item encontrado.
+  </section>
+}
+
+@if (response(); as result) {
+  @if (result.data.length > 0) {
+    <section class="cards" aria-label="Itens operacionais">
+      @for (item of result.data; track item.id) {
+        <article
+          class="status-card status-{{ item.status.toLowerCase() }}"
+          [class.overdue]="item.returnOverdue"
+          tabindex="0"
+        >
+          <header class="card-header">
+            <div>
+              <p class="eyebrow">{{ typeLabel(item.type) }}</p>
+              <h2>{{ item.acronym }} - {{ item.name }}</h2>
+            </div>
+
+            <div class="status-stack">
+              <span class="status-badge">
+                <span class="status-icon" aria-hidden="true">{{ statusIcon(item.status) }}</span>
+                {{ statusLabel(item.status) }}
+              </span>
+              @if (item.returnOverdue) {
+                <span class="overdue-badge">Previsao vencida</span>
+              }
+            </div>
+          </header>
+
+          <p class="description">{{ item.description }}</p>
+
+          <section class="status-details" aria-label="Detalhes do status">
+            <div>
+              <span>Ultima mudanca</span>
+              <strong>{{ formatDate(item.statusUpdatedAt) }}</strong>
+            </div>
+            @if (item.statusNote) {
+              <div>
+                <span>Motivo</span>
+                <strong>{{ item.statusNote }}</strong>
+              </div>
+            }
+            @if (item.expectedReturnAt) {
+              <div>
+                <span>Previsao</span>
+                <strong>{{ formatDate(item.expectedReturnAt) }}</strong>
+              </div>
+            }
+          </section>
+
+          <section class="responsibles-grid" aria-label="Responsaveis">
+            <div class="role-block">
+              <h3>Tecnicos</h3>
+              @if (item.technicalResponsibles.length === 0) {
+                <p class="empty-role">Nenhum responsavel tecnico.</p>
+              } @else {
+                @for (responsible of item.technicalResponsibles; track responsible.relationshipId) {
+                  <article class="responsible-contact">
+                    <div>
+                      <strong>{{ responsible.name }}</strong>
+                      <span>{{ contactSummary(responsible) }}</span>
+                    </div>
+                    <div class="contact-actions">
+                      @if (responsible.phone) {
+                        <button type="button" class="small-button" (click)="copyContact('Telefone', responsible.phone)">
+                          Copiar telefone
+                        </button>
+                      }
+                      @if (responsible.email) {
+                        <a class="small-button link-button" [href]="'mailto:' + responsible.email">E-mail</a>
+                        <button type="button" class="small-button" (click)="copyContact('E-mail', responsible.email)">
+                          Copiar e-mail
+                        </button>
+                      }
+                      @if (responsible.contactChannel) {
+                        <button type="button" class="small-button" (click)="copyContact('Canal', responsible.contactChannel)">
+                          Copiar canal
+                        </button>
+                      }
+                    </div>
+                  </article>
+                }
+              }
+            </div>
+
+            <div class="role-block">
+              <h3>Gerenciais</h3>
+              @if (item.managerialResponsibles.length === 0) {
+                <p class="empty-role">Nenhum responsavel gerencial.</p>
+              } @else {
+                @for (responsible of item.managerialResponsibles; track responsible.relationshipId) {
+                  <article class="responsible-contact">
+                    <div>
+                      <strong>{{ responsible.name }}</strong>
+                      <span>{{ contactSummary(responsible) }}</span>
+                    </div>
+                    <div class="contact-actions">
+                      @if (responsible.phone) {
+                        <button type="button" class="small-button" (click)="copyContact('Telefone', responsible.phone)">
+                          Copiar telefone
+                        </button>
+                      }
+                      @if (responsible.email) {
+                        <a class="small-button link-button" [href]="'mailto:' + responsible.email">E-mail</a>
+                        <button type="button" class="small-button" (click)="copyContact('E-mail', responsible.email)">
+                          Copiar e-mail
+                        </button>
+                      }
+                      @if (responsible.contactChannel) {
+                        <button type="button" class="small-button" (click)="copyContact('Canal', responsible.contactChannel)">
+                          Copiar canal
+                        </button>
+                      }
+                    </div>
+                  </article>
+                }
+              }
+            </div>
+          </section>
+        </article>
+      }
+    </section>
+
+    <footer class="pagination">
+      <span>
+        Pagina {{ result.page }} de {{ result.totalPages || 1 }} -
+        {{ result.totalItems }} registros
+      </span>
+      <div>
+        <button type="button" class="ghost-button" [disabled]="result.page <= 1" (click)="previousPage()">
+          Anterior
+        </button>
+        <button
+          type="button"
+          class="ghost-button"
+          [disabled]="result.page >= result.totalPages"
+          (click)="nextPage()"
+        >
+          Proxima
+        </button>
+      </div>
+    </footer>
+  }
+}

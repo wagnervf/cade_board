@@ -3,7 +3,7 @@
 FROM node:24.15.0-alpine3.23 AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && mkdir -p node_modules
+RUN npm ci
 
 FROM deps AS build
 COPY . .
@@ -13,7 +13,7 @@ FROM node:24.15.0-alpine3.23 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
-COPY --from=deps /app/node_modules ./node_modules
+RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 USER node
 EXPOSE 3000

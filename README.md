@@ -107,4 +107,6 @@ npm run build
 ## Status do Projeto
 
 - TASK 01: estrutura inicial do repositorio.
-- Proximas etapas: Docker Compose, base do backend, modelo de dados e frontend.
+- TASK 02: Docker Compose com PostgreSQL, API e web.
+- TASK 03: base NestJS do backend com validacao de ambiente, prefixo `/api/v1`, CORS, filtro global de erros, Swagger em `/api/docs`, endpoint `/api/v1/health`, lint, testes e build.
+- Proximas etapas: modelo de dados, responsaveis, catalogo e frontend.

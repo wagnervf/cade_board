@@ -134,4 +134,5 @@ npm run build
 - TASK 10: tela de gestao de responsaveis no frontend com busca, paginacao, cadastro, edicao, ativacao/inativacao com confirmacao, validacoes equivalentes ao backend e estados de carregamento/vazio/erro/sucesso.
 - TASK 11: tela de gestao de itens no frontend com listagem administrativa, filtros, cadastro, edicao, ativacao/inativacao, selecao pesquisavel de responsaveis existentes e manutencao de vinculos tecnicos e gerenciais sem criar novos cadastros.
 - TASK 12: painel operacional com busca por sigla/nome/descricao com debounce e cancelamento de requisicoes anteriores, filtros preservados na URL, cards responsivos por criticidade, contatos agrupados por papel com acao de copiar, status com texto/cor/indicador visual, previsao vencida, paginacao e estados de carregamento/vazio/erro.
-- Proximas etapas: alteracao rapida de status no painel e validacao final do MVP.
+- TASK 13: alteracao rapida de status no painel com formulario compacto por card, opcoes `OK`, `Instavel` e `Parado`, motivo/previsao opcionais, confirmacao de alteracao, alerta adicional ao limpar previsao retornando para `OK`, bloqueio por card durante salvamento, mensagem de sucesso/erro e atualizacao local com a resposta da API.
+- Proximas etapas: testes integrados, documentacao e encerramento do MVP.

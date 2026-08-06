@@ -22,7 +22,8 @@
 }
 
 input,
-select {
+select,
+textarea {
   background: #ffffff;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -30,6 +31,10 @@ select {
   min-height: 40px;
   padding: var(--space-2) var(--space-3);
   width: 100%;
+}
+
+textarea {
+  resize: vertical;
 }
 
 .filters {
@@ -208,6 +213,63 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.quick-status {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+}
+
+.quick-status-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.status-form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.status-form label {
+  color: var(--color-text);
+  display: grid;
+  font-weight: 700;
+  gap: var(--space-1);
+}
+
+.segmented-control {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.segment {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  min-height: 40px;
+  padding: var(--space-2);
+}
+
+.segment.active {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.segment input {
+  height: 16px;
+  min-height: 0;
+  width: 16px;
+}
+
 .responsibles-grid {
   display: grid;
   gap: var(--space-3);
@@ -262,6 +324,12 @@ button:disabled {
   background: transparent;
   border: 1px solid var(--color-border);
   color: var(--color-text);
+}
+
+.primary-button {
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  color: #ffffff;
 }
 
 .small-button {

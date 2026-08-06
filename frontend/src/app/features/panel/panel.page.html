@@ -45,6 +45,10 @@
   <section class="feedback" role="status">{{ message }}</section>
 }
 
+@if (successMessage(); as message) {
+  <section class="feedback" role="status">{{ message }}</section>
+}
+
 @if (errorMessage(); as message) {
   <section class="feedback error" role="alert">{{ message }}</section>
 }
@@ -104,6 +108,79 @@
               <div>
                 <span>Previsao</span>
                 <strong>{{ formatDate(item.expectedReturnAt) }}</strong>
+              </div>
+            }
+          </section>
+
+          <section class="quick-status" aria-label="Alteracao rapida de status">
+            <div class="quick-status-header">
+              <h3>Status</h3>
+              @if (activeStatusItemId() === item.id) {
+                <button
+                  type="button"
+                  class="ghost-button"
+                  [disabled]="isStatusSaving(item)"
+                  (click)="cancelStatusForm()"
+                >
+                  Cancelar
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="ghost-button"
+                  [disabled]="isStatusSaving(item)"
+                  (click)="openStatusForm(item)"
+                >
+                  Alterar status
+                </button>
+              }
+            </div>
+
+            @if (activeStatusItemId() === item.id) {
+              <div class="status-form">
+                <div class="segmented-control" role="radiogroup" aria-label="Novo status">
+                  @for (status of statuses; track status.value) {
+                    <label class="segment" [class.active]="statusDraft().status === status.value">
+                      <input
+                        type="radio"
+                        name="status-{{ item.id }}"
+                        [checked]="statusDraft().status === status.value"
+                        [disabled]="isStatusSaving(item)"
+                        (change)="updateDraftStatus(status.value)"
+                      >
+                      <span>{{ statusLabel(status.value) }}</span>
+                    </label>
+                  }
+                </div>
+
+                <label>
+                  Motivo
+                  <textarea
+                    rows="3"
+                    [value]="statusDraft().statusNote"
+                    [disabled]="isStatusSaving(item)"
+                    (input)="updateDraftNote($any($event.target).value)"
+                  ></textarea>
+                </label>
+
+                <label>
+                  Previsao de retorno
+                  <input
+                    type="datetime-local"
+                    [value]="statusDraft().expectedReturnAt"
+                    [disabled]="statusDraft().status === 'OK' || isStatusSaving(item)"
+                    (input)="updateDraftExpectedReturn($any($event.target).value)"
+                  >
+                </label>
+
+                <button
+                  type="button"
+                  class="primary-button"
+                  [disabled]="isStatusSaving(item)"
+                  (click)="saveStatus(item)"
+                >
+                  {{ isStatusSaving(item) ? 'Salvando...' : 'Salvar status' }}
+                </button>
               </div>
             }
           </section>

@@ -44,6 +44,12 @@ export type ItemPayload = {
   type: CatalogItemType;
 };
 
+export type ItemStatusPayload = {
+  expectedReturnAt?: string | null;
+  status: OperationalStatus;
+  statusNote?: string | null;
+};
+
 export type ItemListQuery = {
   includeInactive?: boolean;
   page: number;
@@ -100,6 +106,10 @@ export class ItemsApi {
     return this.http.patch<CatalogItem>(apiUrl(`/items/${id}/active`), {
       active,
     });
+  }
+
+  updateStatus(id: string, payload: ItemStatusPayload): Observable<CatalogItem> {
+    return this.http.patch<CatalogItem>(apiUrl(`/items/${id}/status`), payload);
   }
 
   addResponsibility(

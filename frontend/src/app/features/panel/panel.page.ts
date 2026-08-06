@@ -8,6 +8,7 @@ import {
   CatalogItem,
   CatalogItemType,
   ItemResponsible,
+  ItemStatusPayload,
   ItemsApi,
   OperationalStatus,
 } from '../items/items.api';
@@ -24,6 +25,12 @@ type PanelQuery = {
   search?: string;
   status?: OperationalStatus | '';
   type?: CatalogItemType | '';
+};
+
+type StatusDraft = {
+  expectedReturnAt: string;
+  status: OperationalStatus;
+  statusNote: string;
 };
 
 @Component({
@@ -59,7 +66,15 @@ export class PanelPage implements OnInit {
   readonly page = signal(1);
   readonly response = signal<PaginatedResponse<CatalogItem> | null>(null);
   readonly isLoading = signal(false);
+  readonly activeStatusItemId = signal<string | null>(null);
+  readonly savingStatusItemId = signal<string | null>(null);
+  readonly statusDraft = signal<StatusDraft>({
+    expectedReturnAt: '',
+    status: 'OK',
+    statusNote: '',
+  });
   readonly errorMessage = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(null);
   readonly copiedMessage = signal<string | null>(null);
 
   ngOnInit(): void {
@@ -116,6 +131,90 @@ export class PanelPage implements OnInit {
       this.page.set(response.page + 1);
       this.searchRequests.next();
     }
+  }
+
+  openStatusForm(item: CatalogItem): void {
+    this.clearMessages();
+    this.activeStatusItemId.set(item.id);
+    this.statusDraft.set({
+      expectedReturnAt: this.toDateTimeLocalValue(item.expectedReturnAt),
+      status: item.status,
+      statusNote: item.statusNote ?? '',
+    });
+  }
+
+  cancelStatusForm(): void {
+    this.activeStatusItemId.set(null);
+    this.statusDraft.set({
+      expectedReturnAt: '',
+      status: 'OK',
+      statusNote: '',
+    });
+  }
+
+  updateDraftStatus(status: string): void {
+    if (!this.isOperationalStatus(status)) {
+      return;
+    }
+
+    this.statusDraft.update((draft) => ({
+      ...draft,
+      expectedReturnAt: status === 'OK' ? '' : draft.expectedReturnAt,
+      status,
+    }));
+  }
+
+  updateDraftNote(statusNote: string): void {
+    this.statusDraft.update((draft) => ({
+      ...draft,
+      statusNote,
+    }));
+  }
+
+  updateDraftExpectedReturn(expectedReturnAt: string): void {
+    this.statusDraft.update((draft) => ({
+      ...draft,
+      expectedReturnAt,
+    }));
+  }
+
+  saveStatus(item: CatalogItem): void {
+    if (this.savingStatusItemId() === item.id) {
+      return;
+    }
+
+    const draft = this.statusDraft();
+    const confirmed = window.confirm(`Confirmar alteracao de status de ${item.acronym}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    if (draft.status === 'OK' && item.expectedReturnAt) {
+      const clearForecast = window.confirm(
+        'Ao voltar para OK, a previsao de retorno atual sera removida. Confirmar?',
+      );
+
+      if (!clearForecast) {
+        return;
+      }
+    }
+
+    this.clearMessages();
+    this.savingStatusItemId.set(item.id);
+    this.api
+      .updateStatus(item.id, this.getStatusPayload(draft))
+      .pipe(
+        finalize(() => this.savingStatusItemId.set(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (updatedItem) => {
+          this.updateLoadedItem(updatedItem);
+          this.activeStatusItemId.set(null);
+          this.successMessage.set(`Status de ${updatedItem.acronym} atualizado.`);
+        },
+        error: (error: unknown) => this.errorMessage.set(this.getErrorMessage(error)),
+      });
   }
 
   copyContact(label: string, value: string | null): void {
@@ -184,6 +283,10 @@ export class PanelPage implements OnInit {
     return contacts.length > 0 ? contacts.join(' | ') : 'Sem contato informado';
   }
 
+  isStatusSaving(item: CatalogItem): boolean {
+    return this.savingStatusItemId() === item.id;
+  }
+
   private updateUrlAndFetch() {
     const query = this.getQuery();
     const queryParams = {
@@ -224,6 +327,36 @@ export class PanelPage implements OnInit {
     };
   }
 
+  private getStatusPayload(draft: StatusDraft): ItemStatusPayload {
+    return {
+      expectedReturnAt:
+        draft.status === 'OK' ? null : this.toIsoDateOrNull(draft.expectedReturnAt),
+      status: draft.status,
+      statusNote: this.normalizeOptional(draft.statusNote),
+    };
+  }
+
+  private updateLoadedItem(item: CatalogItem): void {
+    this.response.update((response) => {
+      if (!response) {
+        return response;
+      }
+
+      return {
+        ...response,
+        data: response.data.map((loadedItem) =>
+          loadedItem.id === item.id ? item : loadedItem,
+        ),
+      };
+    });
+  }
+
+  private clearMessages(): void {
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.copiedMessage.set(null);
+  }
+
   private applyInitialQueryParams(): void {
     const params = this.route.snapshot.queryParamMap;
     const page = Number(params.get('page') ?? 1);
@@ -244,6 +377,29 @@ export class PanelPage implements OnInit {
     return this.statuses.some((option) => option.value === value);
   }
 
+  private normalizeOptional(value: string): string | null {
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  }
+
+  private toDateTimeLocalValue(value: string | null): string {
+    if (!value) {
+      return '';
+    }
+
+    const date = new Date(value);
+    const offsetMs = date.getTimezoneOffset() * 60_000;
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+  }
+
+  private toIsoDateOrNull(value: string): string | null {
+    if (!value) {
+      return null;
+    }
+
+    return new Date(value).toISOString();
+  }
+
   private getErrorMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       const message =
@@ -260,6 +416,6 @@ export class PanelPage implements OnInit {
       }
     }
 
-    return 'Nao foi possivel carregar o painel.';
+    return 'Nao foi possivel concluir a operacao.';
   }
 }

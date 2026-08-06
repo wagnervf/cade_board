@@ -97,6 +97,23 @@ describe('ItemsService', () => {
     );
   });
 
+  it('can include inactive items in administrative listings', async () => {
+    prisma.catalogItem.count.mockResolvedValue(1);
+    prisma.catalogItem.findMany.mockResolvedValue([makeItem({ active: false })]);
+
+    await service.list({
+      includeInactive: true,
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(prisma.catalogItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+      }),
+    );
+  });
+
   it('returns not found for missing detail', async () => {
     prisma.catalogItem.findUnique.mockResolvedValue(null);
 

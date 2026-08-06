@@ -293,7 +293,7 @@ export class ItemsService {
     const search = query.search?.trim();
 
     return {
-      active: true,
+      ...(query.includeInactive ? {} : { active: true }),
       ...(query.status ? { status: query.status } : {}),
       ...(query.type ? { type: query.type } : {}),
       ...(search

@@ -3,6 +3,291 @@
   <h1>Itens</h1>
 </section>
 
-<section class="surface">
-  <p>Cadastro de sistemas, projetos e servicos de infraestrutura.</p>
+@if (feedbackMessage(); as message) {
+  <section class="feedback" role="status">
+    {{ message }}
+  </section>
+}
+
+@if (errorMessage(); as message) {
+  <section class="feedback error" role="alert">
+    {{ message }}
+  </section>
+}
+
+<section class="management-grid">
+  <section class="surface editor-panel">
+    <form class="item-form" [formGroup]="itemForm" (ngSubmit)="submitItem()">
+      <div class="section-title">
+        <h2>{{ editingItem() ? 'Editar item' : 'Novo item' }}</h2>
+        @if (editingItem()) {
+          <button type="button" class="ghost-button" (click)="startCreate()">Novo</button>
+        }
+      </div>
+
+      <div class="inline-fields">
+        <label>
+          Tipo
+          <select formControlName="type">
+            @for (type of itemTypes; track type.value) {
+              <option [value]="type.value">{{ type.label }}</option>
+            }
+          </select>
+          @if (isItemInvalid('type')) {
+            <span class="field-error">Selecione o tipo.</span>
+          }
+        </label>
+
+        <label>
+          Sigla
+          <input type="text" formControlName="acronym" maxlength="30">
+          @if (isItemInvalid('acronym')) {
+            <span class="field-error">Informe a sigla com ate 30 caracteres.</span>
+          }
+        </label>
+      </div>
+
+      <label>
+        Nome
+        <input type="text" formControlName="name" maxlength="160">
+        @if (isItemInvalid('name')) {
+          <span class="field-error">Informe o nome com ate 160 caracteres.</span>
+        }
+      </label>
+
+      <label>
+        Descricao
+        <textarea formControlName="description" rows="4"></textarea>
+        @if (isItemInvalid('description')) {
+          <span class="field-error">Informe a descricao.</span>
+        }
+      </label>
+
+      <button type="submit" class="primary-button" [disabled]="itemForm.invalid || isSaving()">
+        {{ isSaving() ? 'Salvando...' : editingItem() ? 'Salvar alteracoes' : 'Cadastrar' }}
+      </button>
+    </form>
+
+    @if (editingItem(); as item) {
+      <section class="link-panel" [class.disabled-section]="!item.active">
+        <div class="section-title">
+          <h2>Responsaveis</h2>
+          <span class="status-chip">{{ item.active ? 'Item ativo' : 'Item inativo' }}</span>
+        </div>
+
+        <form class="link-form" [formGroup]="linkForm" (ngSubmit)="addResponsibility()">
+          <label class="search-field">
+            Buscar responsavel
+            <input
+              type="search"
+              [value]="responsibleSearch()"
+              (input)="responsibleSearch.set($any($event.target).value)"
+              (keyup.enter)="searchResponsibles()"
+            >
+          </label>
+
+          <button type="button" class="secondary-button" (click)="searchResponsibles()">
+            Buscar
+          </button>
+
+          <label>
+            Responsavel
+            <select formControlName="responsibleId">
+              <option value="">Selecione</option>
+              @for (responsible of responsibleOptions(); track responsible.id) {
+                <option [value]="responsible.id">
+                  {{ responsible.name }}
+                </option>
+              }
+            </select>
+            @if (isLinkInvalid('responsibleId')) {
+              <span class="field-error">Selecione um responsavel ativo.</span>
+            }
+          </label>
+
+          <label>
+            Papel
+            <select formControlName="role">
+              @for (role of roles; track role.value) {
+                <option [value]="role.value">{{ role.label }}</option>
+              }
+            </select>
+            @if (isLinkInvalid('role')) {
+              <span class="field-error">Selecione o papel.</span>
+            }
+          </label>
+
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="linkForm.invalid || isSaving() || !item.active"
+          >
+            Vincular
+          </button>
+        </form>
+
+        @if (isLoadingResponsibles()) {
+          <div class="state compact">Carregando responsaveis...</div>
+        } @else if (responsibleOptions().length === 0) {
+          <div class="state compact">Nenhum responsavel ativo encontrado.</div>
+        }
+
+        <div class="role-groups">
+          <section class="role-group">
+            <h3>Tecnicos</h3>
+            @if (technicalResponsibles().length === 0) {
+              <div class="state compact">Nenhum vinculo tecnico.</div>
+            } @else {
+              <div class="relationship-list">
+                @for (responsible of technicalResponsibles(); track responsible.relationshipId) {
+                  <article class="relationship-row">
+                    <span>{{ responsible.name }}</span>
+                    <button
+                      type="button"
+                      class="ghost-button danger"
+                      [disabled]="isSaving()"
+                      (click)="removeResponsibility(responsible)"
+                    >
+                      Remover
+                    </button>
+                  </article>
+                }
+              </div>
+            }
+          </section>
+
+          <section class="role-group">
+            <h3>Gerenciais</h3>
+            @if (managerialResponsibles().length === 0) {
+              <div class="state compact">Nenhum vinculo gerencial.</div>
+            } @else {
+              <div class="relationship-list">
+                @for (responsible of managerialResponsibles(); track responsible.relationshipId) {
+                  <article class="relationship-row">
+                    <span>{{ responsible.name }}</span>
+                    <button
+                      type="button"
+                      class="ghost-button danger"
+                      [disabled]="isSaving()"
+                      (click)="removeResponsibility(responsible)"
+                    >
+                      Remover
+                    </button>
+                  </article>
+                }
+              </div>
+            }
+          </section>
+        </div>
+      </section>
+    }
+  </section>
+
+  <section class="surface list-panel">
+    <div class="toolbar">
+      <label class="search-field">
+        Buscar
+        <input
+          type="search"
+          [value]="search()"
+          (input)="search.set($any($event.target).value)"
+          (keyup.enter)="searchItems()"
+        >
+      </label>
+
+      <label>
+        Tipo
+        <select
+          [value]="typeFilter()"
+          (change)="typeFilter.set($any($event.target).value)"
+        >
+          <option value="">Todos</option>
+          @for (type of itemTypes; track type.value) {
+            <option [value]="type.value">{{ type.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        Status
+        <select
+          [value]="statusFilter()"
+          (change)="statusFilter.set($any($event.target).value)"
+        >
+          <option value="">Todos</option>
+          @for (status of statuses; track status.value) {
+            <option [value]="status.value">{{ status.label }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="toolbar-actions">
+        <button type="button" class="secondary-button" (click)="searchItems()">Buscar</button>
+        <button type="button" class="ghost-button" (click)="clearFilters()">Limpar</button>
+      </div>
+    </div>
+
+    @if (isLoading()) {
+      <div class="state">Carregando...</div>
+    } @else if (response()?.data?.length === 0) {
+      <div class="state">Nenhum item encontrado.</div>
+    } @else {
+      <div class="item-list">
+        @for (item of response()?.data; track item.id) {
+          <article class="item-row" [class.inactive]="!item.active">
+            <div class="item-main">
+              <div class="row-heading">
+                <div>
+                  <h3>{{ item.acronym }} - {{ item.name }}</h3>
+                  <span>{{ typeLabel(item.type) }}</span>
+                </div>
+                <div class="chips">
+                  <span class="status-chip status-{{ item.status.toLowerCase() }}">
+                    {{ statusLabel(item.status) }}
+                  </span>
+                  <span class="status-chip">{{ item.active ? 'Ativo' : 'Inativo' }}</span>
+                </div>
+              </div>
+
+              <p>{{ item.description }}</p>
+
+              <div class="role-summary">
+                <span>Tecnicos: {{ item.technicalResponsibles.length }}</span>
+                <span>Gerenciais: {{ item.managerialResponsibles.length }}</span>
+              </div>
+            </div>
+
+            <div class="row-actions">
+              <button type="button" class="secondary-button" (click)="editItem(item)">
+                Editar
+              </button>
+              <button
+                type="button"
+                class="ghost-button danger"
+                [disabled]="isSaving()"
+                (click)="toggleActive(item)"
+              >
+                {{ item.active ? 'Inativar' : 'Ativar' }}
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+
+    <footer class="pagination">
+      <span>
+        Pagina {{ currentPage() }} de {{ totalPages() || 1 }} -
+        {{ response()?.totalItems ?? 0 }} registros
+      </span>
+      <div>
+        <button type="button" class="ghost-button" [disabled]="!canGoBack()" (click)="previousPage()">
+          Anterior
+        </button>
+        <button type="button" class="ghost-button" [disabled]="!canGoForward()" (click)="nextPage()">
+          Proxima
+        </button>
+      </div>
+    </footer>
+  </section>
 </section>

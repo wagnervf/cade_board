@@ -1,0 +1,130 @@
+.app-header {
+  align-items: center;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--space-5);
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 0 var(--page-padding);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  align-items: center;
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 1rem;
+  font-weight: 700;
+  gap: var(--space-2);
+  text-decoration: none;
+}
+
+.brand-mark {
+  align-items: center;
+  background: var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.main-nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.main-nav a {
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+  text-decoration: none;
+}
+
+.main-nav a:hover,
+.main-nav a:focus-visible,
+.main-nav a.active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  outline: none;
+}
+
+.request-bar {
+  animation: request-progress 1.2s ease-in-out infinite;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-warning));
+  height: 3px;
+  left: 0;
+  position: fixed;
+  top: 64px;
+  width: 40%;
+  z-index: 11;
+}
+
+.notice {
+  align-items: center;
+  background: var(--color-danger-soft);
+  border-bottom: 1px solid var(--color-danger-border);
+  color: var(--color-danger);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-3) var(--page-padding);
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice button {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
+}
+
+.app-shell {
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: var(--space-6) var(--page-padding);
+}
+
+@keyframes request-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(140%);
+  }
+
+  100% {
+    transform: translateX(280%);
+  }
+}
+
+@media (max-width: 720px) {
+  .app-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-3);
+    padding-top: var(--space-3);
+  }
+
+  .main-nav {
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .request-bar {
+    top: 104px;
+  }
+}

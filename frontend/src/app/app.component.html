@@ -1,0 +1,27 @@
+<header class="app-header">
+  <a class="brand" routerLink="/painel" aria-label="CADEBOARD">
+    <span class="brand-mark" aria-hidden="true">C</span>
+    <span>CADEBOARD</span>
+  </a>
+
+  <nav class="main-nav" aria-label="Navegacao principal">
+    <a routerLink="/painel" routerLinkActive="active">Painel</a>
+    <a routerLink="/itens" routerLinkActive="active">Itens</a>
+    <a routerLink="/responsaveis" routerLinkActive="active">Responsaveis</a>
+  </nav>
+</header>
+
+@if (status.isLoading()) {
+  <div class="request-bar" aria-hidden="true"></div>
+}
+
+@if (status.errorMessage(); as errorMessage) {
+  <section class="notice error" role="alert">
+    <p>{{ errorMessage }}</p>
+    <button type="button" (click)="status.clearError()">Dispensar</button>
+  </section>
+}
+
+<main class="app-shell">
+  <router-outlet />
+</main>

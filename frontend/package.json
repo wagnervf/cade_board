@@ -5,9 +5,38 @@
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
-    "build": "mkdir -p dist/cadeboard/browser && cp src/index.html dist/cadeboard/browser/index.html"
+    "build": "ng build",
+    "lint": "eslint .",
+    "start": "ng serve --host 0.0.0.0",
+    "test": "vitest run"
   },
   "engines": {
     "node": "24.x"
+  },
+  "dependencies": {
+    "@angular/common": "22.1.0",
+    "@angular/compiler": "22.1.0",
+    "@angular/core": "22.1.0",
+    "@angular/forms": "22.1.0",
+    "@angular/platform-browser": "22.1.0",
+    "@angular/router": "22.1.0",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1",
+    "zone.js": "0.16.0"
+  },
+  "devDependencies": {
+    "@angular/build": "22.1.0",
+    "@angular/cli": "22.1.0",
+    "@angular/compiler-cli": "22.1.0",
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.1.2",
+    "eslint": "10.8.0",
+    "jsdom": "27.3.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.66.0",
+    "vitest": "4.1.10"
+  },
+  "overrides": {
+    "@hono/node-server": "2.1.0"
   }
 }

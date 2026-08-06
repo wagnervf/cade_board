@@ -18,6 +18,7 @@ import { CreateItemResponsibilityDto } from './dto/create-item-responsibility.dt
 import { CreateItemDto } from './dto/create-item.dto';
 import { ListItemsQueryDto } from './dto/list-items-query.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { UpdateItemStatusDto } from './dto/update-item-status.dto';
 import { ItemResponse, ItemsService } from './items.service';
 import { PaginatedResponse } from '../common/pagination/paginated-response';
 
@@ -65,6 +66,16 @@ export class ItemsController {
     @Body() dto: ActiveItemDto,
   ): Promise<ItemResponse> {
     return this.itemsService.setActive(id, dto.active);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Atualiza rapidamente o status atual de um item.' })
+  @ApiOkResponse({ description: 'Status atualizado.' })
+  updateStatus(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateItemStatusDto,
+  ): Promise<ItemResponse> {
+    return this.itemsService.updateStatus(id, dto);
   }
 
   @Post(':itemId/responsibilities')

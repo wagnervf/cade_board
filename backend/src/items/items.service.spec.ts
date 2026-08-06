@@ -159,4 +159,39 @@ describe('ItemsService', () => {
       }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
+
+  it('updates status using server timestamp and clears forecast when status is OK', async () => {
+    prisma.catalogItem.findUnique.mockResolvedValue(makeItem());
+    prisma.catalogItem.update.mockResolvedValue(makeItem({ status: OperationalStatus.OK }));
+
+    await service.updateStatus('item-id', {
+      expectedReturnAt: '2026-01-01T00:00:00.000Z',
+      status: OperationalStatus.OK,
+      statusNote: 'Resolvido',
+    });
+
+    expect(prisma.catalogItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          expectedReturnAt: null,
+          status: OperationalStatus.OK,
+          statusNote: 'Resolvido',
+          statusUpdatedAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
+
+  it('marks non-OK item with expired return forecast as overdue', async () => {
+    prisma.catalogItem.findUnique.mockResolvedValue(
+      makeItem({
+        expectedReturnAt: new Date('2026-01-01T00:00:00.000Z'),
+        status: OperationalStatus.PARADO,
+      }),
+    );
+
+    await expect(service.detail('item-id')).resolves.toMatchObject({
+      returnOverdue: true,
+    });
+  });
 });

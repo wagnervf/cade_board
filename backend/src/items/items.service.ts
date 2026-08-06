@@ -10,12 +10,14 @@ import {
   Prisma,
   Responsible,
   ResponsibilityRole,
+  OperationalStatus,
 } from '@prisma/client';
 
 import { CreateItemDto } from './dto/create-item.dto';
 import { CreateItemResponsibilityDto } from './dto/create-item-responsibility.dto';
 import { ListItemsQueryDto } from './dto/list-items-query.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { UpdateItemStatusDto } from './dto/update-item-status.dto';
 import {
   getTotalPages,
   PaginatedResponse,
@@ -48,6 +50,7 @@ export type ItemResponse = {
   status: string;
   statusNote: string | null;
   statusUpdatedAt: string;
+  returnOverdue: boolean;
   technicalResponsibles: ItemResponsibleResponse[];
   type: string;
   updatedAt: string;
@@ -104,6 +107,10 @@ function toResponse(item: ItemWithResponsibilities): ItemResponse {
     status: item.status,
     statusNote: item.statusNote,
     statusUpdatedAt: item.statusUpdatedAt.toISOString(),
+    returnOverdue:
+      item.status !== OperationalStatus.OK &&
+      item.expectedReturnAt !== null &&
+      item.expectedReturnAt.getTime() < Date.now(),
     technicalResponsibles,
     type: item.type,
     updatedAt: item.updatedAt.toISOString(),
@@ -204,6 +211,27 @@ export class ItemsService {
     return toResponse(item as ItemWithResponsibilities);
   }
 
+  async updateStatus(id: string, dto: UpdateItemStatusDto): Promise<ItemResponse> {
+    await this.findExisting(id);
+    const expectedReturnAt =
+      dto.status === OperationalStatus.OK
+        ? null
+        : this.parseOptionalDate(dto.expectedReturnAt);
+
+    const item = await this.prisma.catalogItem.update({
+      data: {
+        expectedReturnAt,
+        status: dto.status,
+        statusNote: this.normalizeOptionalText(dto.statusNote),
+        statusUpdatedAt: new Date(),
+      },
+      include: this.includeResponsibilities,
+      where: { id },
+    });
+
+    return toResponse(item as ItemWithResponsibilities);
+  }
+
   async createResponsibility(
     itemId: string,
     dto: CreateItemResponsibilityDto,
@@ -291,6 +319,23 @@ export class ItemsService {
     }
 
     return item as ItemWithResponsibilities;
+  }
+
+  private normalizeOptionalText(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  }
+
+  private parseOptionalDate(value: string | null | undefined): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    return new Date(value);
   }
 
   private handlePersistenceError(error: unknown): never {

@@ -1,5 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize, switchMap } from 'rxjs';
@@ -33,6 +43,8 @@ type SelectOption<T extends string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ItemsPage implements OnInit {
+  @ViewChild('itemDialog') private itemDialog?: ElementRef<HTMLDialogElement>;
+
   private readonly api = inject(ItemsApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
@@ -41,17 +53,17 @@ export class ItemsPage implements OnInit {
   readonly itemTypes: Array<SelectOption<CatalogItemType>> = [
     { label: 'Sistema', value: 'SISTEMA' },
     { label: 'Projeto', value: 'PROJETO' },
-    { label: 'Servico de infraestrutura', value: 'SERVICO_INFRAESTRUTURA' },
+    { label: 'Serviço de infraestrutura', value: 'SERVICO_INFRAESTRUTURA' },
   ];
 
   readonly roles: Array<SelectOption<ResponsibilityRole>> = [
-    { label: 'Tecnico', value: 'TECNICO' },
+    { label: 'Técnico', value: 'TECNICO' },
     { label: 'Gerencial', value: 'GERENCIAL' },
   ];
 
   readonly statuses: Array<SelectOption<OperationalStatus>> = [
     { label: 'OK', value: 'OK' },
-    { label: 'Instavel', value: 'INSTAVEL' },
+    { label: 'Instável', value: 'INSTAVEL' },
     { label: 'Parado', value: 'PARADO' },
   ];
 
@@ -68,9 +80,22 @@ export class ItemsPage implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly feedbackMessage = signal<string | null>(null);
   readonly editingItem = signal<CatalogItem | null>(null);
+  readonly isEditorOpen = signal(false);
 
   readonly currentPage = computed(() => this.response()?.page ?? 1);
   readonly totalPages = computed(() => this.response()?.totalPages ?? 0);
+  readonly visiblePages = computed(() => {
+    const totalPages = Math.max(this.totalPages(), 1);
+    const currentPage = this.currentPage();
+    const windowSize = 5;
+    const start = Math.max(
+      1,
+      Math.min(currentPage - Math.floor(windowSize / 2), totalPages - windowSize + 1),
+    );
+    const end = Math.min(totalPages, start + windowSize - 1);
+
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  });
   readonly canGoBack = computed(() => this.currentPage() > 1);
   readonly canGoForward = computed(() => this.currentPage() < this.totalPages());
   readonly technicalResponsibles = computed(
@@ -120,6 +145,12 @@ export class ItemsPage implements OnInit {
     }
   }
 
+  goToPage(page: number): void {
+    if (page !== this.currentPage() && page >= 1 && page <= this.totalPages()) {
+      this.loadItems(page);
+    }
+  }
+
   startCreate(): void {
     this.editingItem.set(null);
     this.clearMessages();
@@ -133,6 +164,7 @@ export class ItemsPage implements OnInit {
       responsibleId: '',
       role: 'TECNICO',
     });
+    this.openEditor();
   }
 
   editItem(item: CatalogItem): void {
@@ -148,6 +180,23 @@ export class ItemsPage implements OnInit {
       responsibleId: '',
       role: 'TECNICO',
     });
+    this.openEditor();
+  }
+
+  closeEditor(): void {
+    this.itemDialog?.nativeElement.close();
+  }
+
+  onEditorCancel(event: Event): void {
+    if (this.isSaving()) {
+      event.preventDefault();
+    }
+  }
+
+  onEditorClosed(): void {
+    this.isEditorOpen.set(false);
+    this.editingItem.set(null);
+    this.errorMessage.set(null);
   }
 
   submitItem(): void {
@@ -169,9 +218,9 @@ export class ItemsPage implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (item) => {
+        next: () => {
           this.feedbackMessage.set(editing ? 'Item atualizado.' : 'Item criado.');
-          this.editItem(item);
+          this.closeEditor();
           this.loadItems(this.currentPage());
         },
         error: (error: unknown) => this.errorMessage.set(this.getErrorMessage(error)),
@@ -288,12 +337,31 @@ export class ItemsPage implements OnInit {
     return this.itemTypes.find((option) => option.value === type)?.label ?? type;
   }
 
+  typeIcon(type: CatalogItemType): string {
+    const icons: Record<CatalogItemType, string> = {
+      PROJETO: 'folder',
+      SERVICO_INFRAESTRUTURA: 'shield',
+      SISTEMA: 'monitor',
+    };
+
+    return icons[type];
+  }
+
   statusLabel(status: OperationalStatus): string {
     return this.statuses.find((option) => option.value === status)?.label ?? status;
   }
 
   roleLabel(role: ResponsibilityRole): string {
     return this.roles.find((option) => option.value === role)?.label ?? role;
+  }
+
+  private openEditor(): void {
+    const dialog = this.itemDialog?.nativeElement;
+
+    if (dialog && !dialog.open) {
+      this.isEditorOpen.set(true);
+      dialog.showModal();
+    }
   }
 
   private loadItems(page: number): void {

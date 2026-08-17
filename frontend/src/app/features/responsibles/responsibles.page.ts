@@ -1,5 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
@@ -14,6 +24,7 @@ import {
   ResponsiblesApi,
 } from './responsibles.api';
 import { atLeastOneContactValidator } from './responsibles.form';
+import { getInitials } from '../../shared/initials';
 import { PaginatedResponse } from '../../shared/pagination';
 
 @Component({
@@ -25,6 +36,9 @@ import { PaginatedResponse } from '../../shared/pagination';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ResponsiblesPage implements OnInit {
+  @ViewChild('responsibleDialog')
+  private responsibleDialog?: ElementRef<HTMLDialogElement>;
+
   private readonly api = inject(ResponsiblesApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(FormBuilder);
@@ -37,9 +51,23 @@ export class ResponsiblesPage implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly feedbackMessage = signal<string | null>(null);
   readonly editingResponsible = signal<Responsible | null>(null);
+  readonly isEditorOpen = signal(false);
+  readonly initials = getInitials;
 
   readonly currentPage = computed(() => this.response()?.page ?? 1);
   readonly totalPages = computed(() => this.response()?.totalPages ?? 0);
+  readonly visiblePages = computed(() => {
+    const totalPages = Math.max(this.totalPages(), 1);
+    const currentPage = this.currentPage();
+    const windowSize = 5;
+    const start = Math.max(
+      1,
+      Math.min(currentPage - Math.floor(windowSize / 2), totalPages - windowSize + 1),
+    );
+    const end = Math.min(totalPages, start + windowSize - 1);
+
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  });
   readonly canGoBack = computed(() => this.currentPage() > 1);
   readonly canGoForward = computed(() => this.currentPage() < this.totalPages());
 
@@ -78,19 +106,49 @@ export class ResponsiblesPage implements OnInit {
     }
   }
 
+  goToPage(page: number): void {
+    if (page !== this.currentPage() && page >= 1 && page <= this.totalPages()) {
+      this.loadResponsibles(page);
+    }
+  }
+
+  startCreate(): void {
+    this.editingResponsible.set(null);
+    this.clearMessages();
+    this.resetForm();
+    this.openEditor();
+  }
+
   editResponsible(responsible: Responsible): void {
     this.editingResponsible.set(responsible);
-    this.feedbackMessage.set(null);
+    this.clearMessages();
     this.form.reset({
       contactChannel: responsible.contactChannel ?? '',
       email: responsible.email ?? '',
       name: responsible.name,
       phone: responsible.phone ?? '',
     });
+    this.openEditor();
   }
 
-  cancelEdit(): void {
+  closeEditor(): void {
+    this.responsibleDialog?.nativeElement.close();
+  }
+
+  onEditorCancel(event: Event): void {
+    if (this.isSaving()) {
+      event.preventDefault();
+    }
+  }
+
+  onEditorClosed(): void {
+    this.isEditorOpen.set(false);
     this.editingResponsible.set(null);
+    this.errorMessage.set(null);
+    this.resetForm();
+  }
+
+  private resetForm(): void {
     this.form.reset({
       contactChannel: '',
       email: '',
@@ -123,7 +181,7 @@ export class ResponsiblesPage implements OnInit {
       .subscribe({
         next: () => {
           this.feedbackMessage.set(editing ? 'Responsavel atualizado.' : 'Responsavel criado.');
-          this.cancelEdit();
+          this.closeEditor();
           this.loadResponsibles(this.currentPage());
         },
         error: (error: unknown) => this.errorMessage.set(this.getErrorMessage(error)),
@@ -168,6 +226,20 @@ export class ResponsiblesPage implements OnInit {
       this.form.hasError('contactRequired') &&
       (this.form.dirty || this.form.touched)
     );
+  }
+
+  private openEditor(): void {
+    const dialog = this.responsibleDialog?.nativeElement;
+
+    if (dialog && !dialog.open) {
+      this.isEditorOpen.set(true);
+      dialog.showModal();
+    }
+  }
+
+  private clearMessages(): void {
+    this.errorMessage.set(null);
+    this.feedbackMessage.set(null);
   }
 
   private loadResponsibles(page: number): void {

@@ -1,18 +1,30 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EMPTY, Subject, catchError, debounceTime, finalize, from, switchMap } from 'rxjs';
 
 import {
   CatalogItem,
   CatalogItemType,
-  ItemResponsible,
   ItemStatusPayload,
   ItemsApi,
   OperationalStatus,
 } from '../items/items.api';
+import { getInitials } from '../../shared/initials';
 import { PaginatedResponse } from '../../shared/pagination';
+import { getTeamsContact, getTeamsLabel } from '../../shared/teams-contact';
+import { prioritizeStoppedItems } from './panel-order';
 
 type SelectOption<T extends string> = {
   label: string;
@@ -36,26 +48,33 @@ type StatusDraft = {
 @Component({
   selector: 'app-panel-page',
   standalone: true,
+  imports: [RouterLink],
   templateUrl: './panel.page.html',
   styleUrl: './panel.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PanelPage implements OnInit {
+  @ViewChild('statusDialog') private statusDialog?: ElementRef<HTMLDialogElement>;
+  @ViewChild('statusConfirmationDialog')
+  private statusConfirmationDialog?: ElementRef<HTMLDialogElement>;
+
   private readonly api = inject(ItemsApi);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly searchRequests = new Subject<void>();
+  private successMessageTimeoutId: number | null = null;
+  private teamsCopyMessageTimeoutId: number | null = null;
 
   readonly itemTypes: Array<SelectOption<CatalogItemType>> = [
     { label: 'Sistema', value: 'SISTEMA' },
     { label: 'Projeto', value: 'PROJETO' },
-    { label: 'Servico de infraestrutura', value: 'SERVICO_INFRAESTRUTURA' },
+    { label: 'Serviço de infraestrutura', value: 'SERVICO_INFRAESTRUTURA' },
   ];
 
   readonly statuses: Array<SelectOption<OperationalStatus>> = [
     { label: 'OK', value: 'OK' },
-    { label: 'Instavel', value: 'INSTAVEL' },
+    { label: 'Instável', value: 'INSTAVEL' },
     { label: 'Parado', value: 'PARADO' },
   ];
 
@@ -75,10 +94,33 @@ export class PanelPage implements OnInit {
   });
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
-  readonly copiedMessage = signal<string | null>(null);
+  readonly teamsCopyMessage = signal<string | null>(null);
+  readonly initials = getInitials;
+  readonly teamsContact = getTeamsContact;
+  readonly teamsLabel = getTeamsLabel;
+  readonly activeStatusItem = computed(() => {
+    const itemId = this.activeStatusItemId();
+    return this.response()?.data.find((item) => item.id === itemId) ?? null;
+  });
+  readonly visiblePages = computed(() => {
+    const totalPages = Math.max(this.response()?.totalPages ?? 0, 1);
+    const currentPage = this.response()?.page ?? this.page();
+    const windowSize = 5;
+    const start = Math.max(
+      1,
+      Math.min(currentPage - Math.floor(windowSize / 2), totalPages - windowSize + 1),
+    );
+    const end = Math.min(totalPages, start + windowSize - 1);
+
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  });
 
   ngOnInit(): void {
     this.applyInitialQueryParams();
+    this.destroyRef.onDestroy(() => {
+      this.clearSuccessMessageTimeout();
+      this.clearTeamsCopyMessageTimeout();
+    });
 
     this.searchRequests
       .pipe(
@@ -86,13 +128,23 @@ export class PanelPage implements OnInit {
         switchMap(() => this.updateUrlAndFetch()),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((response) => this.response.set(response));
+      .subscribe((response) =>
+        this.response.set({
+          ...response,
+          data: prioritizeStoppedItems(response.data),
+        }),
+      );
 
     this.searchRequests.next();
   }
 
   updateSearch(value: string): void {
     this.search.set(value);
+    this.page.set(1);
+    this.searchRequests.next();
+  }
+
+  searchItems(): void {
     this.page.set(1);
     this.searchRequests.next();
   }
@@ -133,6 +185,15 @@ export class PanelPage implements OnInit {
     }
   }
 
+  goToPage(page: number): void {
+    const totalPages = this.response()?.totalPages ?? 0;
+
+    if (page !== this.page() && page >= 1 && page <= totalPages) {
+      this.page.set(page);
+      this.searchRequests.next();
+    }
+  }
+
   openStatusForm(item: CatalogItem): void {
     this.clearMessages();
     this.activeStatusItemId.set(item.id);
@@ -141,6 +202,7 @@ export class PanelPage implements OnInit {
       status: item.status,
       statusNote: item.statusNote ?? '',
     });
+    this.statusDialog?.nativeElement.showModal();
   }
 
   cancelStatusForm(): void {
@@ -150,6 +212,20 @@ export class PanelPage implements OnInit {
       status: 'OK',
       statusNote: '',
     });
+  }
+
+  closeStatusDialog(): void {
+    this.statusDialog?.nativeElement.close();
+  }
+
+  onStatusDialogCancel(event: Event): void {
+    if (this.savingStatusItemId()) {
+      event.preventDefault();
+    }
+  }
+
+  onStatusDialogClosed(): void {
+    this.cancelStatusForm();
   }
 
   updateDraftStatus(status: string): void {
@@ -178,27 +254,35 @@ export class PanelPage implements OnInit {
     }));
   }
 
-  saveStatus(item: CatalogItem): void {
+  requestStatusSave(item: CatalogItem): void {
+    if (this.savingStatusItemId() === item.id) {
+      return;
+    }
+
+    const dialog = this.statusConfirmationDialog?.nativeElement;
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+    }
+  }
+
+  closeStatusConfirmation(): void {
+    if (!this.savingStatusItemId()) {
+      this.statusConfirmationDialog?.nativeElement.close();
+    }
+  }
+
+  onStatusConfirmationCancel(event: Event): void {
+    if (this.savingStatusItemId()) {
+      event.preventDefault();
+    }
+  }
+
+  confirmStatusSave(item: CatalogItem): void {
     if (this.savingStatusItemId() === item.id) {
       return;
     }
 
     const draft = this.statusDraft();
-    const confirmed = window.confirm(`Confirmar alteracao de status de ${item.acronym}?`);
-    if (!confirmed) {
-      return;
-    }
-
-    if (draft.status === 'OK' && item.expectedReturnAt) {
-      const clearForecast = window.confirm(
-        'Ao voltar para OK, a previsao de retorno atual sera removida. Confirmar?',
-      );
-
-      if (!clearForecast) {
-        return;
-      }
-    }
-
     this.clearMessages();
     this.savingStatusItemId.set(item.id);
     this.api
@@ -210,42 +294,67 @@ export class PanelPage implements OnInit {
       .subscribe({
         next: (updatedItem) => {
           this.updateLoadedItem(updatedItem);
-          this.activeStatusItemId.set(null);
-          this.successMessage.set(`Status de ${updatedItem.acronym} atualizado.`);
+          this.showSuccessMessage(`Status de ${updatedItem.acronym} atualizado.`);
+          this.statusConfirmationDialog?.nativeElement.close();
+          this.closeStatusDialog();
         },
-        error: (error: unknown) => this.errorMessage.set(this.getErrorMessage(error)),
+        error: (error: unknown) => {
+          this.statusConfirmationDialog?.nativeElement.close();
+          this.errorMessage.set(this.getErrorMessage(error));
+        },
       });
   }
 
-  copyContact(label: string, value: string | null): void {
-    if (!value) {
-      return;
-    }
-
+  copyTeams(responsibleName: string, value: string): void {
     const done = () => {
-      this.copiedMessage.set(`${label} copiado.`);
-      window.setTimeout(() => this.copiedMessage.set(null), 2200);
+      this.clearTeamsCopyMessageTimeout();
+      this.teamsCopyMessage.set(`Teams de ${responsibleName} copiado.`);
+      this.teamsCopyMessageTimeoutId = window.setTimeout(() => {
+        this.teamsCopyMessage.set(null);
+        this.teamsCopyMessageTimeoutId = null;
+      }, 2200);
+    };
+    const failed = () => {
+      this.errorMessage.set('Não foi possível copiar o Teams.');
+    };
+    const copyWithFallback = () => {
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.append(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+
+      if (copied) {
+        done();
+      } else {
+        failed();
+      }
     };
 
     if (window.navigator.clipboard) {
-      void window.navigator.clipboard.writeText(value).then(done);
+      void window.navigator.clipboard.writeText(value).then(done).catch(copyWithFallback);
       return;
     }
 
-    const textarea = document.createElement('textarea');
-    textarea.value = value;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.append(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    textarea.remove();
-    done();
+    copyWithFallback();
   }
 
   typeLabel(type: CatalogItemType): string {
     return this.itemTypes.find((option) => option.value === type)?.label ?? type;
+  }
+
+  typeIcon(type: CatalogItemType): string {
+    const icons: Record<CatalogItemType, string> = {
+      PROJETO: 'folder',
+      SERVICO_INFRAESTRUTURA: 'shield',
+      SISTEMA: 'monitor',
+    };
+
+    return icons[type];
   }
 
   statusLabel(status: OperationalStatus): string {
@@ -254,9 +363,9 @@ export class PanelPage implements OnInit {
 
   statusIcon(status: OperationalStatus): string {
     const icons: Record<OperationalStatus, string> = {
-      INSTAVEL: '!',
-      OK: 'OK',
-      PARADO: 'X',
+      INSTAVEL: 'warning',
+      OK: 'check',
+      PARADO: 'alert',
     };
 
     return icons[status];
@@ -271,16 +380,6 @@ export class PanelPage implements OnInit {
       dateStyle: 'short',
       timeStyle: 'short',
     }).format(new Date(value));
-  }
-
-  contactSummary(responsible: ItemResponsible): string {
-    const contacts = [
-      responsible.phone,
-      responsible.email,
-      responsible.contactChannel,
-    ].filter(Boolean);
-
-    return contacts.length > 0 ? contacts.join(' | ') : 'Sem contato informado';
   }
 
   isStatusSaving(item: CatalogItem): boolean {
@@ -344,8 +443,10 @@ export class PanelPage implements OnInit {
 
       return {
         ...response,
-        data: response.data.map((loadedItem) =>
-          loadedItem.id === item.id ? item : loadedItem,
+        data: prioritizeStoppedItems(
+          response.data.map((loadedItem) =>
+            loadedItem.id === item.id ? item : loadedItem,
+          ),
         ),
       };
     });
@@ -353,8 +454,35 @@ export class PanelPage implements OnInit {
 
   private clearMessages(): void {
     this.errorMessage.set(null);
+    this.clearSuccessMessage();
+  }
+
+  private showSuccessMessage(message: string): void {
+    this.clearSuccessMessageTimeout();
+    this.successMessage.set(message);
+    this.successMessageTimeoutId = window.setTimeout(() => {
+      this.successMessage.set(null);
+      this.successMessageTimeoutId = null;
+    }, 4000);
+  }
+
+  private clearSuccessMessage(): void {
+    this.clearSuccessMessageTimeout();
     this.successMessage.set(null);
-    this.copiedMessage.set(null);
+  }
+
+  private clearSuccessMessageTimeout(): void {
+    if (this.successMessageTimeoutId !== null) {
+      window.clearTimeout(this.successMessageTimeoutId);
+      this.successMessageTimeoutId = null;
+    }
+  }
+
+  private clearTeamsCopyMessageTimeout(): void {
+    if (this.teamsCopyMessageTimeoutId !== null) {
+      window.clearTimeout(this.teamsCopyMessageTimeoutId);
+      this.teamsCopyMessageTimeoutId = null;
+    }
   }
 
   private applyInitialQueryParams(): void {

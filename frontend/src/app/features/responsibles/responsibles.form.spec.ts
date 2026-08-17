@@ -23,9 +23,11 @@ describe('atLeastOneContactValidator', () => {
     ).toBe(true);
   });
 
-  it('accepts forms with one contact field', () => {
-    expect(
-      makeForm({ contactChannel: 'Teams: ana', email: '', phone: '' }).valid,
-    ).toBe(true);
+  it.each([
+    { contactChannel: '', email: '', phone: '+55 61 3000-1001' },
+    { contactChannel: '', email: 'ana@example.internal', phone: '' },
+    { contactChannel: 'Teams: ana', email: '', phone: '' },
+  ])('accepts a form with one contact field: $contactChannel$email$phone', (value) => {
+    expect(makeForm(value).valid).toBe(true);
   });
 });
